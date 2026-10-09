@@ -38,7 +38,8 @@ app.use(morgan('combined', {
 
 app.get('/health', async (_req, res) => {
   const db = await checkDatabaseConnection();
-  res.status(db ? 200 : 503).json({
+  // Always 200 so ALB keeps container healthy — DB status in body
+  res.status(200).json({
     status: db ? 'healthy' : 'degraded',
     timestamp: new Date().toISOString(),
     uptime: Math.round(process.uptime()),
