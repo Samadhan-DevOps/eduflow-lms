@@ -1,0 +1,32 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 437952802324.dkr.ecr.ap-south-1.amazonaws.com
+      - echo Login successful
+
+  build:
+    commands:
+      - echo Building Backend Docker image...
+      - docker build -t eduflow-backend ./backend --target production
+      - docker tag eduflow-backend:latest 437952802324.dkr.ecr.ap-south-1.amazonaws.com/eduflow-backend:latest
+
+      - echo Building Frontend Docker image...
+      - docker build -t eduflow-frontend ./frontend --target production
+      - docker tag eduflow-frontend:latest 437952802324.dkr.ecr.ap-south-1.amazonaws.com/eduflow-frontend:latest
+
+  post_build:
+    commands:
+      - echo Pushing Backend image to ECR...
+      - docker push 437952802324.dkr.ecr.ap-south-1.amazonaws.com/eduflow-backend:latest
+
+      - echo Pushing Frontend image to ECR...
+      - docker push 437952802324.dkr.ecr.ap-south-1.amazonaws.com/eduflow-frontend:latest
+
+      - echo Deploying to ECS...
+      - aws ecs update-service --cluster eduflow-cluster --service eduflow-backend-service --force-new-deployment --region ap-south-1
+      - aws ecs update-service --cluster eduflow-cluster --service eduflow-frontend-service --force-new-deployment --region ap-south-1
+
+      - echo Done! EduFlow LMS is deploying to ECS.

@@ -1,0 +1,81 @@
+services:
+
+  # ─── PostgreSQL ───────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: eduflow-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       eduflow
+      POSTGRES_USER:     eduflow_user
+      POSTGRES_PASSWORD: eduflow_secure_password_123
+    ports:
+      - "5432:5432"
+    volumes:
+      - eduflow_postgres_data:/var/lib/postgresql/data
+      - ./database/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U eduflow_user -d eduflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - eduflow-net
+
+  # ─── Backend API ──────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: eduflow-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV:       production
+      PORT:           5000
+      DB_HOST:        postgres
+      DB_PORT:        5432
+      DB_NAME:        eduflow
+      DB_USER:        eduflow_user
+      DB_PASSWORD:    eduflow_secure_password_123
+      JWT_SECRET:     local-dev-secret-change-in-production-min32chars
+      JWT_EXPIRES_IN: 7d
+      CORS_ORIGINS:   http://localhost:80,http://localhost:3000
+      LOG_LEVEL:      info
+      BCRYPT_ROUNDS:  10
+    ports:
+      - "5000:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - eduflow-net
+    healthcheck:
+      test: ["CMD","wget","-qO-","http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ─── Frontend (Nginx + React) ─────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+    container_name: eduflow-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - eduflow-net
+
+volumes:
+  eduflow_postgres_data:
+
+networks:
+  eduflow-net:
+    driver: bridge
