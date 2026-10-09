@@ -32,7 +32,8 @@ export const errorHandler = (
 
   const body: ApiResponse = { success: false, message };
   if (process.env['NODE_ENV'] !== 'production' && code >= 500) {
-    (body as Record<string, unknown>)['stack'] = err.stack;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (body as any)['stack'] = err.stack;
   }
 
   res.status(code).json(body);

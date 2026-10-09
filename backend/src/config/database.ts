@@ -1,4 +1,4 @@
-import { Pool, PoolConfig, QueryResult } from 'pg';
+import { Pool, PoolConfig } from 'pg';
 import { env } from './env';
 import { logger } from '../utils/logger';
 
@@ -40,17 +40,18 @@ export async function checkDatabaseConnection(): Promise<boolean> {
   }
 }
 
-export async function query<T extends Record<string, unknown> = Record<string, unknown>>(
+export async function query<T = Record<string, unknown>>(
   text: string,
   params?: unknown[]
 ): Promise<T[]> {
   const start = Date.now();
-  const result: QueryResult<T> = await pool.query(text, params);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const result = await pool.query(text as any, params as any);
   logger.debug('DB query', { ms: Date.now() - start, rows: result.rowCount });
-  return result.rows;
+  return result.rows as T[];
 }
 
-export async function queryOne<T extends Record<string, unknown> = Record<string, unknown>>(
+export async function queryOne<T = Record<string, unknown>>(
   text: string,
   params?: unknown[]
 ): Promise<T | null> {
